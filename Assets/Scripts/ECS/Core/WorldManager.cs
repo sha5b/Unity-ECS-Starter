@@ -14,13 +14,15 @@ namespace ECS.Core
         private void Start()
         {
             // Find all systems in the scene using the newer FindObjectsByType method
-            var sceneSystems = Object.FindObjectsByType<SystemBase>(FindObjectsSortMode.None);
+            var sceneSystems = Object.FindObjectsByType<SystemBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             
             // First register all systems
             foreach (var system in sceneSystems)
             {
                 RegisterSystem(system);
             }
+
+            Debug.Log($"[WorldManager] Found {sceneSystems.Length} systems in scene");
 
             // Start initialization process
             StartInitialization();
@@ -52,10 +54,12 @@ namespace ECS.Core
                         if (!system.enabled) // If system disabled itself due to dependencies
                         {
                             allInitialized = false;
+                            Debug.Log($"[WorldManager] System {system.GetType().Name} waiting for dependencies");
                         }
                         else
                         {
                             initializedThisAttempt++;
+                            Debug.Log($"[WorldManager] System {system.GetType().Name} initialized");
                         }
                     }
                 }
@@ -64,7 +68,8 @@ namespace ECS.Core
 
                 if (!allInitialized && attempt >= maxAttempts)
                 {
-                    Debug.LogError("[WorldManager] Failed to initialize all systems after maximum attempts");
+                    var uninitialized = systems.Where(s => !s.enabled).Select(s => s.GetType().Name);
+                    Debug.LogError($"[WorldManager] Failed to initialize systems after {maxAttempts} attempts. Uninitialized systems: {string.Join(", ", uninitialized)}");
                     break;
                 }
 
@@ -119,6 +124,7 @@ namespace ECS.Core
             if (entity != null && !entities.Contains(entity))
             {
                 entities.Add(entity);
+                Debug.Log($"[WorldManager] Registered entity: {entity.gameObject.name}");
 
                 // Register with appropriate systems
                 foreach (var system in systems)
@@ -136,6 +142,7 @@ namespace ECS.Core
             if (entity != null && entities.Contains(entity))
             {
                 entities.Remove(entity);
+                Debug.Log($"[WorldManager] Unregistered entity: {entity.gameObject.name}");
 
                 // Remove from component-entity map
                 foreach (var kvp in componentEntityMap)
@@ -163,6 +170,7 @@ namespace ECS.Core
             if (!componentEntityMap[componentType].Contains(entity))
             {
                 componentEntityMap[componentType].Add(entity);
+                Debug.Log($"[WorldManager] Added {componentType.Name} to entity: {entity.gameObject.name}");
             }
 
             // Check if entity should be registered with any systems
@@ -183,6 +191,7 @@ namespace ECS.Core
             if (componentEntityMap.ContainsKey(componentType))
             {
                 componentEntityMap[componentType].Remove(entity);
+                Debug.Log($"[WorldManager] Removed {componentType.Name} from entity: {entity.gameObject.name}");
             }
 
             // Check if entity should be unregistered from any systems
@@ -235,6 +244,8 @@ namespace ECS.Core
                 UnregisterSystem(system);
             }
             systems.Clear();
+
+            Debug.Log("[WorldManager] Cleanup complete");
         }
     }
 }

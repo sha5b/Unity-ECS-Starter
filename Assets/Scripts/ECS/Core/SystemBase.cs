@@ -15,7 +15,7 @@ namespace ECS.Core
             enabled = false;
 
             // Find or create world manager
-            worldManager = Object.FindFirstObjectByType<WorldManager>();
+            worldManager = Object.FindFirstObjectByType<WorldManager>(FindObjectsInactive.Include);
             if (worldManager == null)
             {
                 var go = new GameObject("World Manager");
@@ -87,6 +87,7 @@ namespace ECS.Core
             {
                 registeredEntities.Add(entity);
                 OnEntityRegistered(entity);
+                Debug.Log($"[{GetType().Name}] Registered entity: {entity.gameObject.name}");
             }
         }
 
@@ -96,6 +97,7 @@ namespace ECS.Core
             {
                 registeredEntities.Remove(entity);
                 OnEntityUnregistered(entity);
+                Debug.Log($"[{GetType().Name}] Unregistered entity: {entity.gameObject.name}");
             }
         }
 

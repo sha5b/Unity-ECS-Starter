@@ -18,7 +18,7 @@ namespace ECS.Core
             }
 
             // Find world manager
-            worldManager = Object.FindFirstObjectByType<WorldManager>();
+            worldManager = Object.FindFirstObjectByType<WorldManager>(FindObjectsInactive.Include);
             if (worldManager == null)
             {
                 var go = new GameObject("World Manager");
