@@ -17,18 +17,20 @@ namespace ECS.Systems
         private float nextNeedCheck;
         private TimeSystem timeSystem;
         private ResourceSystem resourceSystem;
+        private TerrainSystem terrainSystem;
 
         protected override bool CheckDependencies()
         {
-            return IsSystemReady<TimeSystem>() && IsSystemReady<ResourceSystem>();
+            return IsSystemReady<TimeSystem>() && IsSystemReady<ResourceSystem>() && IsSystemReady<TerrainSystem>();
         }
 
         protected override void Initialize()
         {
             timeSystem = GetSystem<TimeSystem>();
             resourceSystem = GetSystem<ResourceSystem>();
+            terrainSystem = GetSystem<TerrainSystem>();
             
-            if (timeSystem != null && resourceSystem != null)
+            if (timeSystem != null && resourceSystem != null && terrainSystem != null)
             {
                 nextNeedCheck = Time.time + needCheckInterval;
                 base.Initialize();
@@ -78,8 +80,8 @@ namespace ECS.Systems
                 var npc = entity.GetComponent<NPCComponent>();
                 if (npc != null)
                 {
-                    // Update needs based on time
-                    npc.needs.Update(needCheckInterval);
+                    // Update needs based on time and current biome
+                    UpdateNeedsBasedOnBiome(npc);
 
                     // Check if any needs require attention
                     CheckAndAddressNeeds(npc);
@@ -87,12 +89,36 @@ namespace ECS.Systems
             }
         }
 
+        private void UpdateNeedsBasedOnBiome(NPCComponent npc)
+        {
+            var biome = terrainSystem.GetBiomeAt(npc.transform.position);
+            float deltaTime = needCheckInterval;
+
+            // Base need changes
+            npc.needs.Update(deltaTime);
+
+            // Biome-specific modifiers
+            switch (biome)
+            {
+                case TerrainDataComponent.BiomeType.Desert:
+                    npc.needs.thirst += deltaTime * 0.2f; // Faster thirst in desert
+                    npc.needs.energy += deltaTime * 0.1f; // Tire faster in desert
+                    break;
+
+                case TerrainDataComponent.BiomeType.Forest:
+                    npc.needs.hunger -= deltaTime * 0.05f; // Easier to find food in forest
+                    break;
+
+                case TerrainDataComponent.BiomeType.Mountains:
+                    npc.needs.energy += deltaTime * 0.15f; // Tire faster in mountains
+                    break;
+            }
+        }
+
         private void CheckAndAddressNeeds(NPCComponent npc)
         {
-            // Only check needs if not already addressing one
             if (npc.currentState == NPCComponent.NPCState.Idle)
             {
-                // Check needs in priority order
                 if (npc.needs.hunger > needThreshold)
                 {
                     FindAndSetResourceTarget(npc, ResourceComponent.ResourceType.Food);
@@ -111,7 +137,6 @@ namespace ECS.Systems
                 }
                 else if (Random.value < npc.personality.curiosity * 0.1f)
                 {
-                    // Random exploration
                     Vector3 randomPoint = GetRandomPointInRange(npc.transform.position, 10f);
                     npc.SetTarget(randomPoint);
                     npc.SetState(NPCComponent.NPCState.Moving);
@@ -151,9 +176,15 @@ namespace ECS.Systems
             }
             else
             {
-                // Move towards target
                 Vector3 targetPos = npc.GetTargetPosition();
-                Vector3 direction = (targetPos - npc.transform.position).normalized;
+                Vector3 currentPos = npc.transform.position;
+                
+                // Get terrain height at target position
+                float targetHeight = terrainSystem.GetHeightAt(targetPos);
+                targetPos.y = targetHeight;
+
+                // Calculate direction considering terrain height
+                Vector3 direction = (targetPos - currentPos).normalized;
                 
                 // Rotate towards target
                 Quaternion targetRotation = Quaternion.LookRotation(direction);
@@ -163,8 +194,10 @@ namespace ECS.Systems
                     npc.rotationSpeed * Time.deltaTime
                 );
 
-                // Move forward
-                npc.transform.position += npc.transform.forward * npc.moveSpeed * Time.deltaTime;
+                // Move forward and adjust height
+                Vector3 newPosition = currentPos + npc.transform.forward * npc.moveSpeed * Time.deltaTime;
+                newPosition.y = terrainSystem.GetHeightAt(newPosition);
+                npc.transform.position = newPosition;
             }
         }
 
@@ -178,7 +211,6 @@ namespace ECS.Systems
         {
             if (resourceSystem == null) return;
 
-            // Find the resource we're interacting with
             var nearbyResources = resourceSystem.GetResourcesInRange(
                 GetResourceTypeForState(npc.currentState),
                 npc.transform.position,
@@ -188,10 +220,8 @@ namespace ECS.Systems
             var resource = nearbyResources.FirstOrDefault();
             if (resource != null && resource.CanBeUsed())
             {
-                // Consume the resource
                 float consumed = resource.Consume(Time.deltaTime);
 
-                // Update NPC needs based on consumption
                 switch (npc.currentState)
                 {
                     case NPCComponent.NPCState.Eating:
@@ -224,14 +254,12 @@ namespace ECS.Systems
             }
             else
             {
-                // Lost access to resource
                 npc.SetState(NPCComponent.NPCState.Idle);
             }
         }
 
         private void UpdateSocializing(NPCComponent npc)
         {
-            // Find the NPC we're socializing with
             var nearbyNPCs = registeredEntities
                 .Where(e => e.GetComponent<NPCComponent>() != null && e != npc.GetEntity())
                 .Select(e => e.GetComponent<NPCComponent>())
@@ -240,7 +268,6 @@ namespace ECS.Systems
             var socialPartner = nearbyNPCs.FirstOrDefault();
             if (socialPartner != null)
             {
-                // Update social needs
                 float socialRate = Time.deltaTime * 0.1f;
                 npc.needs.social = Mathf.Max(0, npc.needs.social - socialRate);
                 socialPartner.needs.social = Mathf.Max(0, socialPartner.needs.social - socialRate);
@@ -252,7 +279,6 @@ namespace ECS.Systems
             }
             else
             {
-                // Lost social partner
                 npc.SetState(NPCComponent.NPCState.Idle);
             }
         }
@@ -265,7 +291,6 @@ namespace ECS.Systems
                 return;
             }
 
-            // Check what kind of target we reached
             var nearbyResources = resourceSystem.GetResourcesInRange(
                 ResourceComponent.ResourceType.Food,
                 npc.transform.position,
@@ -287,7 +312,6 @@ namespace ECS.Systems
             var resource = nearbyResources.FirstOrDefault();
             if (resource != null && resource.CanBeUsed())
             {
-                // Start using the resource
                 resource.StartUsing();
                 switch (resource.type)
                 {
@@ -304,7 +328,6 @@ namespace ECS.Systems
             }
             else
             {
-                // No resource found, return to idle
                 npc.SetState(NPCComponent.NPCState.Idle);
             }
         }
@@ -322,7 +345,6 @@ namespace ECS.Systems
             }
             else
             {
-                // No resource found, explore randomly
                 Vector3 randomPoint = GetRandomPointInRange(npc.transform.position, 10f);
                 npc.SetTarget(randomPoint);
                 npc.SetState(NPCComponent.NPCState.Moving);
@@ -331,7 +353,6 @@ namespace ECS.Systems
 
         private void FindAndSetSocialTarget(NPCComponent npc)
         {
-            // Find nearest NPC for social interaction
             var nearbyNPCs = registeredEntities
                 .Where(e => e.GetComponent<NPCComponent>() != null && e != npc.GetEntity())
                 .Select(e => e.GetComponent<NPCComponent>())
@@ -357,14 +378,19 @@ namespace ECS.Systems
                 case NPCComponent.NPCState.Resting:
                     return ResourceComponent.ResourceType.RestArea;
                 default:
-                    return ResourceComponent.ResourceType.Food; // Default case
+                    return ResourceComponent.ResourceType.Food;
             }
         }
 
         private Vector3 GetRandomPointInRange(Vector3 center, float range)
         {
             Vector2 random2D = Random.insideUnitCircle * range;
-            return center + new Vector3(random2D.x, 0, random2D.y);
+            Vector3 randomPoint = center + new Vector3(random2D.x, 0, random2D.y);
+            
+            // Get terrain height at random point
+            randomPoint.y = terrainSystem.GetHeightAt(randomPoint);
+            
+            return randomPoint;
         }
 
         public override void RegisterEntity(Entity entity)
