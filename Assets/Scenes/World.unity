@@ -134,6 +134,8 @@ GameObject:
   - component: {fileID: 17441955}
   - component: {fileID: 17441954}
   - component: {fileID: 17441953}
+  - component: {fileID: 17441961}
+  - component: {fileID: 17441960}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -167,11 +169,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23c3850355d174f4cb7f49307a377a45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  viewDistance: 5
-  updateInterval: 0.5
   terrainMaterial: {fileID: 0}
-  heightMultiplier: 25
-  blendDistance: 24
+  heightMultiplier: 50
+  terrainSize: 256
+  terrainScale: 2
 --- !u!114 &17441955
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -206,7 +207,7 @@ MonoBehaviour:
   initialWaterSources: 3
   initialRestAreas: 4
   spawnRadius: 20
-  forestFoodMultiplier: 2
+  forestFoodMultiplier: 1
   mountainsRestMultiplier: 1.5
   plainsWaterMultiplier: 1.5
 --- !u!114 &17441957
@@ -252,6 +253,48 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &17441960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 17441952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ed166892da44dc48b1d77849df3d24a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableAgent: 1
+  decisionInterval: 0.5
+  useRandomness: 1
+--- !u!114 &17441961
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 17441952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 035a0ebf89169c543ac5aa8f025fc42a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  npcName: 
+  needs:
+    hunger: 0
+    thirst: 0
+    energy: 0
+    social: 0
+  personality:
+    sociability: 0.5
+    bravery: 0.5
+    curiosity: 0.5
+    diligence: 0.5
+  currentState: 0
+  moveSpeed: 5
+  rotationSpeed: 120
+  interactionRange: 2
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
