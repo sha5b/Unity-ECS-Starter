@@ -15,6 +15,18 @@ The project uses a custom ECS implementation with three main pillars:
 
 ### Core Systems
 
+#### Messaging System
+- Centralized message bus for system communication
+- Type-safe message publishing and subscription
+- Priority-based message processing (Low, Normal, High, Critical)
+- Automatic message queue management
+- Built-in message types:
+  - SystemInitializedMessage: Sent when systems initialize
+  - TimeChangedMessage: Sent on day/night cycle changes
+  - ResourceStateChangedMessage: Sent when resources update
+  - NPCNeedsChangedMessage: Sent when NPC needs change
+  - TerrainChunkGeneratedMessage: Sent when terrain generates
+
 #### Terrain System
 - Procedural terrain generation using multiple noise layers
 - Seamless chunk-based world loading
@@ -119,7 +131,11 @@ Assets/
 │       │   ├── WorldManager.cs     # Central ECS orchestrator
 │       │   ├── Entity.cs           # Base entity class
 │       │   ├── ComponentBase.cs    # Base component class
-│       │   └── SystemBase.cs       # Base system class
+│       │   ├── SystemBase.cs       # Base system class
+│       │   └── Messaging/          # Message-based communication
+│       │       ├── Message.cs      # Base message class
+│       │       ├── MessageBus.cs   # Message routing and handling
+│       │       └── SystemMessages.cs # Built-in message types
 │       ├── Components/
 │       │   ├── NPCComponent.cs     # NPC properties and state
 │       │   ├── ResourceComponent.cs # Resource properties
@@ -147,6 +163,11 @@ Assets/
 - System dependency resolution
 - Event-based component updates
 - Efficient entity querying
+- Message-based system communication:
+  - Decoupled system interactions
+  - Priority-based message processing
+  - Automatic subscription management
+  - Type-safe message handling
 
 ### Terrain Generation
 - Multi-threaded chunk generation

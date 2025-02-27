@@ -1,6 +1,8 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using ECS.Core.Messaging;
 
 namespace ECS.Core
 {
@@ -11,10 +13,21 @@ namespace ECS.Core
         private Dictionary<System.Type, List<Entity>> componentEntityMap = new Dictionary<System.Type, List<Entity>>();
         private bool isInitializing = false;
 
+        // Message bus for system communication
+        private MessageBus messageBus;
+        public MessageBus MessageBus => messageBus;
+
+        private void Awake()
+        {
+            // Initialize message bus
+            messageBus = new MessageBus();
+            Debug.Log("[WorldManager] MessageBus initialized");
+        }
+
         private void Start()
         {
             // Find all systems in the scene using the newer FindObjectsByType method
-            var sceneSystems = Object.FindObjectsByType<SystemBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var sceneSystems = UnityEngine.Object.FindObjectsByType<SystemBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             
             // First register all systems
             foreach (var system in sceneSystems)
@@ -83,6 +96,9 @@ namespace ECS.Core
         {
             if (!isInitializing)
             {
+                // Process any pending messages before updating systems
+                messageBus.ProcessMessages();
+
                 // Update all systems in registration order
                 foreach (var system in systems)
                 {
@@ -98,6 +114,9 @@ namespace ECS.Core
                 {
                     StartInitialization();
                 }
+
+                // Process any messages generated during system updates
+                messageBus.ProcessMessages();
             }
         }
 
@@ -244,6 +263,9 @@ namespace ECS.Core
                 UnregisterSystem(system);
             }
             systems.Clear();
+
+            // Clear message bus subscriptions
+            messageBus.ClearSubscriptions();
 
             Debug.Log("[WorldManager] Cleanup complete");
         }

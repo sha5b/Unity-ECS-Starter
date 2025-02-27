@@ -25,12 +25,10 @@ namespace ECS.Components
         public float persistence = 0.5f;
         public float lacunarity = 2f;
         public Vector2 offset;
-
-        // Edge data for smooth transitions
-        private float[] northEdge;
-        private float[] southEdge;
-        private float[] eastEdge;
-        private float[] westEdge;
+        
+        [Header("Terrain Size")]
+        public int terrainSize = 256;
+        public float terrainScale = 1f;
 
         private MeshFilter meshFilter;
         private MeshRenderer meshRenderer;
@@ -76,6 +74,9 @@ namespace ECS.Components
                 meshRenderer.sharedMaterial = terrainMaterial;
                 Debug.Log($"[{gameObject.name}] Assigned default material");
             }
+            
+            // Initialize arrays with default size
+            InitializeArrays(terrainSize);
         }
 
         public void InitializeArrays(int size)
@@ -83,50 +84,7 @@ namespace ECS.Components
             heightData = new float[size, size];
             biomeData = new BiomeType[size, size];
             
-            // Initialize edge arrays
-            northEdge = new float[size];
-            southEdge = new float[size];
-            eastEdge = new float[size];
-            westEdge = new float[size];
-            
             Debug.Log($"[{gameObject.name}] Initialized arrays with size {size}");
-        }
-
-        public void SetEdgeData(float[] north, float[] south, float[] east, float[] west)
-        {
-            if (heightData == null) return;
-            int size = heightData.GetLength(0);
-
-            // Copy edge data
-            if (north != null && north.Length == size) northEdge = (float[])north.Clone();
-            if (south != null && south.Length == size) southEdge = (float[])south.Clone();
-            if (east != null && east.Length == size) eastEdge = (float[])east.Clone();
-            if (west != null && west.Length == size) westEdge = (float[])west.Clone();
-        }
-
-        public float[] GetEdge(ChunkStateComponent.EdgeDirection direction)
-        {
-            if (heightData == null) return null;
-            int size = heightData.GetLength(0);
-            float[] edge = new float[size];
-
-            switch (direction)
-            {
-                case ChunkStateComponent.EdgeDirection.North:
-                    for (int i = 0; i < size; i++) edge[i] = heightData[i, size - 1];
-                    break;
-                case ChunkStateComponent.EdgeDirection.South:
-                    for (int i = 0; i < size; i++) edge[i] = heightData[i, 0];
-                    break;
-                case ChunkStateComponent.EdgeDirection.East:
-                    for (int i = 0; i < size; i++) edge[i] = heightData[size - 1, i];
-                    break;
-                case ChunkStateComponent.EdgeDirection.West:
-                    for (int i = 0; i < size; i++) edge[i] = heightData[0, i];
-                    break;
-            }
-
-            return edge;
         }
 
         public float GetHeightAt(Vector2 localPosition)
@@ -168,13 +126,7 @@ namespace ECS.Components
                     int index = z * size + x;
                     float height = heightData[x, z];
 
-                    // Apply edge blending
-                    if (z == 0 && southEdge != null) height = Mathf.Lerp(height, southEdge[x], 0.5f);
-                    if (z == size - 1 && northEdge != null) height = Mathf.Lerp(height, northEdge[x], 0.5f);
-                    if (x == 0 && westEdge != null) height = Mathf.Lerp(height, westEdge[z], 0.5f);
-                    if (x == size - 1 && eastEdge != null) height = Mathf.Lerp(height, eastEdge[z], 0.5f);
-
-                    vertices[index] = new Vector3(x, height, z);
+                    vertices[index] = new Vector3(x * terrainScale, height, z * terrainScale);
                     uvs[index] = new Vector2((float)x / size, (float)z / size);
                     normals[index] = Vector3.up; // Will be recalculated later
 

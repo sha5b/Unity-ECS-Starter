@@ -1,5 +1,7 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
+using ECS.Core.Messaging;
 
 namespace ECS.Core
 {
@@ -8,6 +10,25 @@ namespace ECS.Core
         protected WorldManager worldManager;
         protected HashSet<Entity> registeredEntities = new HashSet<Entity>();
         protected bool isInitialized = false;
+        
+        // Protected access to message bus
+        protected MessageBus MessageBus => worldManager?.MessageBus;
+
+        // Helper methods for message handling
+        protected void PublishMessage<T>(T message) where T : Messaging.Message
+        {
+            MessageBus?.Publish(message);
+        }
+
+        protected void SubscribeToMessage<T>(Action<T> handler) where T : Messaging.Message
+        {
+            MessageBus?.Subscribe(handler);
+        }
+
+        protected void UnsubscribeFromMessage<T>(Action<T> handler) where T : Messaging.Message
+        {
+            MessageBus?.Unsubscribe(handler);
+        }
 
         protected virtual void Awake()
         {
@@ -15,7 +36,7 @@ namespace ECS.Core
             enabled = false;
 
             // Find or create world manager
-            worldManager = Object.FindFirstObjectByType<WorldManager>(FindObjectsInactive.Include);
+            worldManager = UnityEngine.Object.FindFirstObjectByType<WorldManager>(FindObjectsInactive.Include);
             if (worldManager == null)
             {
                 var go = new GameObject("World Manager");
@@ -63,6 +84,12 @@ namespace ECS.Core
         {
             if (worldManager != null)
             {
+                // Automatically unsubscribe from all messages when system is destroyed
+                if (MessageBus != null)
+                {
+                    MessageBus.ClearSubscriptions();
+                }
+                
                 worldManager.UnregisterSystem(this);
                 Debug.Log($"[{GetType().Name}] Unregistered from WorldManager");
             }
@@ -78,6 +105,10 @@ namespace ECS.Core
         protected virtual void Initialize()
         {
             isInitialized = true;
+            
+            // Publish initialization message
+            PublishMessage(new SystemInitializedMessage(this));
+            
             Debug.Log($"[{GetType().Name}] Initialized");
         }
 

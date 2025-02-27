@@ -1,6 +1,7 @@
 using UnityEngine;
 using ECS.Core;
 using ECS.Components;
+using ECS.Core.Messaging;
 
 namespace ECS.Systems
 {
@@ -96,7 +97,18 @@ namespace ECS.Systems
 
             if (newPeriod != currentPeriod)
             {
+                var oldPeriod = currentPeriod;
                 currentPeriod = newPeriod;
+                
+                // Publish time changed message
+                PublishMessage(new TimeChangedMessage(
+                    null,
+                    currentTime,
+                    currentDay,
+                    newPeriod,
+                    oldPeriod
+                ));
+                
                 OnPeriodChanged();
             }
         }
