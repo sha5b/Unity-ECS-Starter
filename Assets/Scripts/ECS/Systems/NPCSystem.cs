@@ -117,29 +117,46 @@ namespace ECS.Systems
 
         private void CheckAndAddressNeeds(NPCComponent npc)
         {
+            Debug.Log($"[NPCSystem] Checking needs for {npc.gameObject.name}. Current State: {npc.currentState}");
             if (npc.currentState == NPCComponent.NPCState.Idle)
             {
+                Debug.Log($"[NPCSystem] {npc.gameObject.name} Needs - Hunger: {npc.needs.hunger:F2}, Thirst: {npc.needs.thirst:F2}, Energy: {npc.needs.energy:F2}, Social: {npc.needs.social:F2} (Threshold: {needThreshold:F2}, Social Threshold: {needThreshold * npc.personality.sociability:F2})");
                 if (npc.needs.hunger > needThreshold)
                 {
+                    Debug.Log($"[NPCSystem] {npc.gameObject.name} is hungry. Finding food...");
                     FindAndSetResourceTarget(npc, ResourceComponent.ResourceType.Food);
                 }
                 else if (npc.needs.thirst > needThreshold)
                 {
+                    Debug.Log($"[NPCSystem] {npc.gameObject.name} is thirsty. Finding water...");
                     FindAndSetResourceTarget(npc, ResourceComponent.ResourceType.Water);
                 }
                 else if (npc.needs.energy > needThreshold)
                 {
+                    Debug.Log($"[NPCSystem] {npc.gameObject.name} is tired. Finding rest area...");
                     FindAndSetResourceTarget(npc, ResourceComponent.ResourceType.RestArea);
                 }
                 else if (npc.needs.social > needThreshold * npc.personality.sociability)
                 {
+                    Debug.Log($"[NPCSystem] {npc.gameObject.name} is lonely. Finding friend...");
                     FindAndSetSocialTarget(npc);
                 }
-                else if (Random.value < npc.personality.curiosity * 0.1f)
+                else 
                 {
-                    Vector3 randomPoint = GetRandomPointInRange(npc.transform.position, 10f);
-                    npc.SetTarget(randomPoint);
-                    npc.SetState(NPCComponent.NPCState.Moving);
+                    float curiosityCheck = Random.value;
+                    float curiosityThreshold = npc.personality.curiosity * 0.1f;
+                    Debug.Log($"[NPCSystem] {npc.gameObject.name} Curiosity Check: RandomValue={curiosityCheck:F2}, Threshold={curiosityThreshold:F2} (Curiosity={npc.personality.curiosity:F2})");
+                    if (curiosityCheck < curiosityThreshold)
+                    {
+                        Debug.Log($"[NPCSystem] {npc.gameObject.name} is curious. Moving randomly...");
+                        Vector3 randomPoint = GetRandomPointInRange(npc.transform.position, 10f);
+                        npc.SetTarget(randomPoint);
+                        npc.SetState(NPCComponent.NPCState.Moving);
+                    }
+                    else
+                    {
+                        Debug.Log($"[NPCSystem] {npc.gameObject.name} has no urgent needs and is not curious right now. Staying Idle.");
+                    }
                 }
             }
         }
@@ -196,7 +213,9 @@ namespace ECS.Systems
 
                 // Move forward and adjust height
                 Vector3 newPosition = currentPos + npc.transform.forward * npc.moveSpeed * Time.deltaTime;
-                newPosition.y = terrainSystem.GetHeightAt(newPosition);
+                float calculatedHeight = terrainSystem.GetHeightAt(newPosition);
+                Debug.Log($"[NPCSystem] NPC {npc.gameObject.name}: Moving from {currentPos} towards {targetPos}. NewPosXZ=({newPosition.x}, {newPosition.z}), CalculatedHeight={calculatedHeight}");
+                newPosition.y = calculatedHeight;
                 npc.transform.position = newPosition;
             }
         }
@@ -340,11 +359,13 @@ namespace ECS.Systems
             
             if (resource != null && resource.CanBeUsed())
             {
+                Debug.Log($"[NPCSystem] {npc.gameObject.name} found resource {resource.name} of type {resourceType} at {resource.transform.position}. Setting state to Moving.");
                 npc.SetTarget(resource.transform);
                 npc.SetState(NPCComponent.NPCState.Moving);
             }
             else
             {
+                Debug.Log($"[NPCSystem] {npc.gameObject.name} could not find usable resource of type {resourceType}. Moving randomly instead.");
                 Vector3 randomPoint = GetRandomPointInRange(npc.transform.position, 10f);
                 npc.SetTarget(randomPoint);
                 npc.SetState(NPCComponent.NPCState.Moving);
@@ -362,8 +383,13 @@ namespace ECS.Systems
             var target = nearbyNPCs.FirstOrDefault();
             if (target != null)
             {
+                Debug.Log($"[NPCSystem] {npc.gameObject.name} found social target {target.gameObject.name} at {target.transform.position}. Setting state to Socializing.");
                 npc.SetTarget(target.transform);
                 npc.SetState(NPCComponent.NPCState.Socializing);
+            }
+            else
+            {
+                 Debug.Log($"[NPCSystem] {npc.gameObject.name} could not find a social target nearby.");
             }
         }
 
